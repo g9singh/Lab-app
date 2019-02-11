@@ -12,12 +12,15 @@ class IndexPathCellButton: UIButton {
     var indexPath:IndexPath?
 }
 
-class GalleryViewController: UIViewController, UICollectionViewDataSource, UICollectionViewDelegate{
+
+
+class GalleryViewController: UIViewController, UICollectionViewDataSource, UICollectionViewDelegate  {
     
 
     @IBOutlet weak var imagesCollectionView: UICollectionView!
     
     var imagesTaken = [UIImage]()
+    //selected cells are set to false
     var selectedCells : [Int: Bool] = [:]
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -26,35 +29,35 @@ class GalleryViewController: UIViewController, UICollectionViewDataSource, UICol
         // Do any additional setup after loading the view, typically from a nib.
     }
     
+    func reloadData(){
+        var i = 0
+        for _ in imagesTaken{
+            selectedCells[i] = true
+            i = i + 1
+        }
+        self.imagesCollectionView.reloadSections(IndexSet(integer: 0))
+    }
+    
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
         if (imagesTaken.count > 0){
-            print("collectionView: " + String(imagesTaken.count))
-            return 1
+            return imagesTaken.count
         }
         return 0
     }
     
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
-        
-        let cell =  collectionView.dequeueReusableCell(withReuseIdentifier: "Cell", for: indexPath)
-        let imageView = cell.viewWithTag(1) as! UIImageView
-        let selected = cell.viewWithTag(2) as! IndexPathCellButton
-        selected.indexPath = indexPath
-        selected.addTarget(self, action: #selector(cellSelected), for: .touchUpInside)
-        print(indexPath.row)
-        imageView.image = imagesTaken[indexPath.row]
-        return cell
+        let cell =  collectionView.dequeueReusableCell(withReuseIdentifier: "collectionViewCell", for: indexPath) as? collectionViewCell
+        let imageView = imagesTaken[indexPath.row]
+        cell?.displayContent(image: imageView, isHidden: selectedCells[indexPath.row] ?? true)
+        return cell!
     }
-    @objc func cellSelected(_ sender : IndexPathCellButton) {
-        sender.isSelected = !sender.isSelected
-        sender.isHidden = !sender.isSelected
-        if sender.isHidden {
-            selectedCells[sender.indexPath!.row] = nil
-        }
-        else{
-            selectedCells[sender.indexPath!.row] = true
-        }
+    func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
+        let cell = collectionView.cellForItem(at: indexPath) as? collectionViewCell
+        cell?.selected()
+        selectedCells[indexPath.row] = !selectedCells[indexPath.row]!
     }
+    
+
     //check to see if any images have been selected
     //then upload and show user feed back while uploading
     //after upload is complete show user the results
@@ -71,18 +74,25 @@ class GalleryViewController: UIViewController, UICollectionViewDataSource, UICol
     @IBAction func deleteBtn(_ sender: Any) {
         //TODO: Delete all selectedCells ints outside foreach loop to prevent illegal access while manipulating the array
         //was looking at NSDictionaries becuase they might have  a easier api
-        for (index, _) in self.selectedCells {
-            imagesTaken.remove(at: index)
+        var i = 0
+        for (index, value) in self.selectedCells {
+            print(index, value)
+            if(!value){
+                print("deleted")
+                imagesTaken.remove(at: index - i)
+                //TODO: 
+                i = i + 1 // <- the plus i doesn't work after first delete
+            }
         }
-        self.imagesCollectionView.reloadData()
-        
+        reloadData()
     }
     
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
         if (segue.identifier == "galleryToCamera") {
-            let vc = segue.destination as! CameraViewController
-            vc.imagesTaken = self.imagesTaken
-            print("going from galleryToCamera" + String(imagesTaken.count))
+            if let vc = segue.destination as? CameraViewController{
+                vc.previousViewController = self
+                vc.imagesTaken = self.imagesTaken
+            }
         }
     }
     

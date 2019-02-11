@@ -9,14 +9,14 @@
 import UIKit
 import AVFoundation
 
-class CameraViewController: UIViewController {
+class CameraViewController: UIViewController, UINavigationControllerDelegate {
 
+    var previousViewController = UIViewController()
     var imagesTaken = [UIImage]()
-    var imagePreviews = [Data]()
+    var thumbnails = [Data]()
     @IBOutlet weak var galleryBtn: UIButton!
     @IBOutlet weak var captureBtn: UIButton!
     @IBOutlet weak var cameraView: UIView!
-    @IBOutlet weak var askForPermissionsLabel: UILabel!
     
     var captureSession: AVCaptureSession?
     var videoPreviewLayer: AVCaptureVideoPreviewLayer?
@@ -24,6 +24,7 @@ class CameraViewController: UIViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
+        self.navigationController?.delegate = self
         captureBtn.layer.cornerRadius = captureBtn.frame.size.width / 2
         captureBtn.clipsToBounds = true
         
@@ -71,18 +72,13 @@ class CameraViewController: UIViewController {
         }
     }
     
-    override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
-        if (segue.identifier == "cameraToGallery") {
-            let vc = segue.destination as! GalleryViewController
-            vc.imagesTaken = self.imagesTaken
-            print("going from cameraToGallery" + String(imagesTaken.count))
+    func navigationController(_ navigationController: UINavigationController, willShow viewController: UIViewController, animated: Bool) {
+        if viewController == self.previousViewController {
+            (viewController as? GalleryViewController)?.imagesTaken = imagesTaken
+            (viewController as? GalleryViewController)?.reloadData()
         }
     }
-    
-    @IBAction func closeCameraBtnTouch(_ sender: Any) {
-        let VC = self.storyboard?.instantiateViewController(withIdentifier: "GalleryViewController") as! GalleryViewController
-        self.present(VC, animated: true, completion: nil)
-    }
+
     //capture image and save
     @IBAction func captureBtnTouch(_ sender: Any) {
         // Make sure capturePhotoOutput is valid
@@ -94,7 +90,7 @@ class CameraViewController: UIViewController {
         // Set photo settings for our need
         photoSettings.isAutoStillImageStabilizationEnabled = true
         photoSettings.isHighResolutionPhotoEnabled = true
-        photoSettings.flashMode = .auto
+        photoSettings.flashMode = .off
         
         // Call capturePhoto method by passing our photo settings and a delegate implementing AVCapturePhotoCaptureDelegate
         capturePhotoOutput.capturePhoto(with: photoSettings, delegate: self)
@@ -120,7 +116,7 @@ extension CameraViewController : AVCapturePhotoCaptureDelegate {
         guard let imageData = AVCapturePhotoOutput.jpegPhotoDataRepresentation(forJPEGSampleBuffer: photoSampleBuffer, previewPhotoSampleBuffer: previewPhotoSampleBuffer) else {
             return
         }
-        imagePreviews.append(imageData)
+        thumbnails.append(imageData)
         
         // Initialise an UIImage with our image data
         let capturedImage = UIImage.init(data: imageData , scale: 1.0)
